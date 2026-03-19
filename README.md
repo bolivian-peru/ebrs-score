@@ -1,146 +1,38 @@
-# EBRS — European Business Reputation Standard
+# EBRS — Europos verslo reputacijos standartas
+### European Business Reputation Standard
 
-Open-source company reputation scoring algorithm. 15 signals across 5 axes. Zero dependencies.
-
-**Used in production** at [topimones.lt](http://topimones.lt) to score 27,650+ Lithuanian companies.
-
-## Install
-
-```bash
-npm install ebrs-score
-```
-
-## Quick Start
-
-```typescript
-import { computeReputation } from 'ebrs-score'
-
-const score = computeReputation({
-  companyId: 1,
-  companyName: 'Example UAB',
-  yearlyRows: [
-    { year: 2022, revenue: 3200000, profit: 280000, netProfit: 240000, employees: 35, salary: 1500, sodraDebt: 0 },
-    { year: 2023, revenue: 5000000, profit: 400000, netProfit: 350000, employees: 45, salary: 1800, sodraDebt: 0 },
-    { year: 2024, revenue: 6200000, profit: 550000, netProfit: 480000, employees: 52, salary: 2100, sodraDebt: 0 },
-  ],
-  mentions: [],
-  ratingAverage: null,
-  ratingCount: 0,
-  topYearsListed: 2,
-  foundedYear: 2015,
-  activationStatus: 'inactive',
-  procurementData: null,
-  taxData: null,
-  legalData: null,
-  reportingData: null,
-  governanceData: null,
-  ownershipData: null,
-})
-
-if (score) {
-  console.log(`Score: ${score.overall}/10 (${score.confidence}% confidence)`)
-  console.log(`Risk: ${score.riskLevel}`)
-  for (const axis of score.ebrsAxes) {
-    console.log(`  ${axis.name}: ${axis.score}/10`)
-  }
-}
-```
-
-## The Algorithm
-
-### 5 Axes
-
-| Axis | Weight | Signals | What it measures |
-|------|--------|---------|-----------------|
-| **Continuity** | 15% | continuity_capital, legal_standing | How long the company has existed and operated continuously |
-| **Financial** | 21% | financial_strength, growth_trajectory, profitability_trend, tax_discipline | Revenue, margins, growth consistency, tax compliance |
-| **Market** | 14% | market_presence, community_trust | Public mentions, sentiment, user ratings |
-| **Resilience** | 14% | resilience, workforce_health | Revenue stability, employee growth, salary trends |
-| **Transparency** | 32% | transparency, procurement_integrity, reporting_compliance, governance_quality, ownership_transparency | Filing compliance, governance structure, ownership clarity, procurement behavior |
-
-### Design Principles
-
-1. **Null-exclusion** — Signals without data return `null` and are excluded entirely. No fake defaults. Weights re-normalize across active signals only.
-
-2. **Confidence scoring** — `confidence = avg_signal_confidence x signal_coverage`. A company with 5/15 signals can never exceed 33% confidence, regardless of how good those 5 scores are.
-
-3. **Direction over volatility** — Growth consistency is measured by the fraction of years with positive growth, not by coefficient of variation (which penalizes fast-growing companies).
-
-4. **Government data priority** — The Transparency axis (32%) is the heaviest, backed by official registry data (tax filings, legal status, reporting compliance, ownership records).
-
-5. **No platform bias** — Scores don't depend on subscribing to any platform. Data completeness signal has only 2% weight.
-
-### Data Sources
-
-The algorithm accepts data from any source. The interfaces are designed around common European business data:
-
-| Interface | Typical Source | Required? |
-|-----------|---------------|-----------|
-| `yearlyRows` | Financial statements (revenue, profit, employees) | Yes (at least 1 year) |
-| `mentions` | SERP/news scraping | No |
-| `taxData` | Tax authority (VMI in Lithuania) | No |
-| `legalData` | Business registry (RC JAR in Lithuania) | No |
-| `reportingData` | Filing compliance blacklists | No |
-| `governanceData` | Corporate governance registry | No |
-| `ownershipData` | Shareholder registry (JADIS in Lithuania) | No |
-| `procurementData` | Public procurement records | No |
-
-## 15 Signals
-
-| # | Signal | Axis | Weight | Minimum Data |
-|---|--------|------|--------|-------------|
-| 1 | `financial_strength` | Financial | 8% | 1 year revenue |
-| 2 | `growth_trajectory` | Financial | 4% | 2 years revenue |
-| 3 | `profitability_trend` | Financial | 4% | 1 year profit |
-| 4 | `workforce_health` | Resilience | 7% | 1 year salary or employees |
-| 5 | `market_presence` | Market | 7% | 1+ SERP mentions |
-| 6 | `community_trust` | Market | 7% | TOP list or 1+ rating |
-| 7 | `continuity_capital` | Continuity | 8% | Founded year or 1 year data |
-| 8 | `resilience` | Resilience | 7% | 3 years revenue |
-| 9 | `transparency` | Transparency | 2% | 1 year data |
-| 10 | `procurement_integrity` | Transparency | 9% | 1+ procurement bid |
-| 11 | `tax_discipline` | Transparency | 5% | Tax authority record |
-| 12 | `legal_standing` | Continuity | 7% | Legal registry record |
-| 13 | `reporting_compliance` | Transparency | 10% | Filing compliance record |
-| 14 | `governance_quality` | Transparency | 6% | Governance registry record |
-| 15 | `ownership_transparency` | Transparency | 5% | Ownership registry record |
-
-## Math Audit (v5.1.1)
-
-The algorithm has been mathematically audited. Key fixes applied:
-- Revenue CV replaced with direction-ratio for growth consistency
-- Tax discipline ceiling raised (clean companies can now reach 10.0)
-- Governance normalized by legal form (small companies not penalized for no board)
-- Historical non-filing recovery curve corrected
-- Procurement bid frequency: continuous log scale replaces step function
-
-See [METHODOLOGY.md](./METHODOLOGY.md) for the full mathematical specification.
-
-## API Reference
-
-### `computeReputation(data: CompanyData): ReputationScore | null`
-
-Main scoring function. Returns `null` if no signals have sufficient data.
-
-### `SIGNAL_REGISTRY: SignalDefinition[]`
-
-Array of all 15 signal definitions with `compute(data) => SignalResult | null`.
-
-### `EBRS_AXES: Record<EbrsAxis, { name, description }>`
-
-Axis metadata for all 5 axes.
-
-## License
-
-MIT
+> **Versija 5.1.1 · Beta**
+>
+> Eksperimentinis atvirojo kodo protokolas verslo reputacijos vertinimui. Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos verifikacijos tikslais. Algoritmas dar nėra nepriklausomai audituotas — naudokite produkcinėje aplinkoje savo atsakomybe.
 
 ---
 
-# EBRS — Europos verslo reputacijos standartas
+## Paskirtis
 
-Atvirojo kodo verslo reputacijos vertinimo algoritmas. 15 signalų, 5 ašys. Be priklausomybių.
+EBRS — tai standartizuota verslo reputacijos vertinimo sistema, sukurta dirbti su viešai prieinamais Europos verslo registrų duomenimis. Algoritmas skaičiuoja 0–10 balų reputacijos vertinimą pagal 15 signalų, sugrupuotų į 5 ašis.
 
-**Naudojamas produkcijoje** [topimones.lt](http://topimones.lt) — vertina 27 650+ Lietuvos įmonių.
+Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertinimo protokolą, kurį galėtų naudoti:
+- Valstybinės institucijos ir viešieji pirkimai
+- Finansų sektorius (bankų rizikos vertinimas, kreditavimas)
+- Verslo partnerystės ir tiekimo grandinės
+- Akademiniai tyrimai ir verslo analitika
+- Programinės įrangos kūrėjai (integracija į savo sistemas)
+
+## Statusas
+
+| | |
+|---|---|
+| **Stadija** | Beta (eksperimentinis) |
+| **Versija** | 5.1.1 |
+| **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
+| **Priklausomybės** | 0 (tik TypeScript) |
+| **Testai** | 8 automatiniai testai |
+| **Verifikacija** | Dar nebuvo nepriklausomai audituotas |
+| **Fondas** | Planuojamas (nepriklausoma verifikacijos ir valdymo institucija) |
+
+**Svarbu**: šis algoritmas yra ankstyvos stadijos eksperimentinis projektas. Jis nėra oficialus standartas, kol nebus nepriklausomai verifikuotas. Naudojimas produkcinėje aplinkoje — naudotojo atsakomybė. Kviečiame prisidėti prie peržiūros ir tobulinimo.
+
+---
 
 ## Diegimas
 
@@ -148,7 +40,7 @@ Atvirojo kodo verslo reputacijos vertinimo algoritmas. 15 signalų, 5 ašys. Be 
 npm install ebrs-score
 ```
 
-## Naudojimas
+## Naudojimo pavyzdys
 
 ```typescript
 import { computeReputation } from 'ebrs-score'
@@ -164,7 +56,7 @@ const rezultatas = computeReputation({
   mentions: [],
   ratingAverage: null,
   ratingCount: 0,
-  topYearsListed: 2,
+  topYearsListed: 0,
   foundedYear: 2015,
   activationStatus: 'inactive',
   procurementData: null,
@@ -176,82 +68,197 @@ const rezultatas = computeReputation({
 })
 
 if (rezultatas) {
-  console.log(`Balas: ${rezultatas.overall}/10 (${rezultatas.confidence}% patikimumas)`)
-  console.log(`Rizika: ${rezultatas.riskLevel}`)
+  console.log(`Balas: ${rezultatas.overall}/10`)
+  console.log(`Patikimumas: ${rezultatas.confidence}%`)
+  console.log(`Rizikos lygis: ${rezultatas.riskLevel}`)
   for (const asis of rezultatas.ebrsAxes) {
     console.log(`  ${asis.name}: ${asis.score}/10`)
   }
 }
 ```
 
-## Algoritmas
+---
 
-### 5 ašys
+## Metodologija
 
-| Ašis | Svoris | Signalai | Ką vertina |
-|------|--------|----------|------------|
-| **Tęstinumas** | 15% | continuity_capital, legal_standing | Veiklos trukmė, teisinis statusas, duomenų istorija |
-| **Finansinė drausmė** | 21% | financial_strength, growth_trajectory, profitability_trend, tax_discipline | Pajamos, pelningumas, augimo nuoseklumas, mokestinė drausmė |
-| **Rinkos patikimumas** | 14% | market_presence, community_trust | Viešumo lygis, bendruomenės vertinimai |
-| **Atsparumas** | 14% | resilience, workforce_health | Pajamų stabilumas, darbuotojų gerovė, atlyginimų augimas |
-| **Skaidrumas** | 32% | transparency, procurement_integrity, reporting_compliance, governance_quality, ownership_transparency | Ataskaitų pateikimas, valdymo struktūra, nuosavybės aiškumas, viešieji pirkimai |
+### 5 vertinimo ašys
 
-### Pagrindiniai principai
+| Ašis | Svoris | Signalų skaičius | Vertinimo objektas |
+|------|--------|-----------------|-------------------|
+| **Tęstinumas** | 15% | 2 | Veiklos trukmė, teisinis statusas, duomenų istorija |
+| **Finansinė drausmė** | 21% | 4 | Pajamos, pelningumas, augimo nuoseklumas, mokestinė drausmė |
+| **Rinkos patikimumas** | 14% | 2 | Viešumo lygis, bendruomenės vertinimai |
+| **Atsparumas** | 14% | 2 | Pajamų stabilumas, darbuotojų gerovė, atlyginimų dinamika |
+| **Skaidrumas** | 32% | 5 | Ataskaitų drausmė, valdymo struktūra, nuosavybės aiškumas, viešieji pirkimai |
 
-1. **Null-išskyrimas** — signalai, kuriems trūksta duomenų, grąžina `null` ir yra visiškai pašalinami iš skaičiavimo. Jokių dirbtinių numatytųjų reikšmių. Svoriai perskaičiuojami tarp aktyvių signalų.
-
-2. **Patikimumo balas** — `patikimumas = vidutinis signalų patikimumas x signalų padengimas`. Įmonė su 5/15 signalų niekada neviršys 33% patikimumo, nepriklausomai nuo tų 5 signalų kokybės.
-
-3. **Kryptis, ne svyravimai** — augimo nuoseklumas matuojamas pagal metų su teigiamu augimu dalį, o ne pagal variacijos koeficientą (kuris baudžia sparčiai augančias įmones).
-
-4. **Valstybinių duomenų prioritetas** — Skaidrumo ašis (32%) turi didžiausią svorį, paremta oficialiais registrų duomenimis (mokesčių deklaracijos, teisinis statusas, atskaitomybės drausmė, nuosavybės struktūra).
-
-5. **Jokio platformos šališkumo** — balai nepriklauso nuo prenumeratos ar narystės platformoje. Duomenų pilnumo signalas turi tik 2% svorį.
-
-### Duomenų šaltiniai
-
-Algoritmas priima duomenis iš bet kurio šaltinio. Sąsajos suprojektuotos pagal Europos verslo duomenų standartus:
-
-| Sąsaja | Tipinis šaltinis | Privalomas? |
-|--------|-----------------|-------------|
-| `yearlyRows` | Finansinės ataskaitos (pajamos, pelnas, darbuotojai) | Taip (bent 1 metai) |
-| `mentions` | SERP/naujienų analizė | Ne |
-| `taxData` | Mokesčių inspekcija (VMI Lietuvoje) | Ne |
-| `legalData` | Juridinių asmenų registras (RC JAR Lietuvoje) | Ne |
-| `reportingData` | Ataskaitų nepateikusiųjų sąrašai | Ne |
-| `governanceData` | Valdymo organų registras | Ne |
-| `ownershipData` | Akcininkų registras (JADIS Lietuvoje) | Ne |
-| `procurementData` | Viešųjų pirkimų duomenys | Ne |
-
-### 15 signalų
+### 15 signalų registras
 
 | # | Signalas | Ašis | Svoris | Minimalūs duomenys |
 |---|---------|------|--------|-------------------|
-| 1 | `financial_strength` — Finansinis pajėgumas | Finansinė drausmė | 8% | 1 metų pajamos |
-| 2 | `growth_trajectory` — Augimo trajektorija | Finansinė drausmė | 4% | 2 metų pajamos |
-| 3 | `profitability_trend` — Pelningumo tendencija | Finansinė drausmė | 4% | 1 metų pelnas |
-| 4 | `workforce_health` — Darbuotojų gerovė | Atsparumas | 7% | 1 metų atlyginimas arba darbuotojai |
-| 5 | `market_presence` — Viešumas | Rinkos patikimumas | 7% | 1+ paminėjimas |
-| 6 | `community_trust` — Bendruomenės pasitikėjimas | Rinkos patikimumas | 7% | TOP sąrašas arba 1+ vertinimas |
-| 7 | `continuity_capital` — Tęstinumo kapitalas | Tęstinumas | 8% | Įkūrimo metai arba 1 metų duomenys |
-| 8 | `resilience` — Verslo atsparumas | Atsparumas | 7% | 3 metų pajamos |
-| 9 | `transparency` — Duomenų pilnumas | Skaidrumas | 2% | 1 metų duomenys |
-| 10 | `procurement_integrity` — Viešieji pirkimai | Skaidrumas | 9% | 1+ dalyvavimas |
-| 11 | `tax_discipline` — Mokestinė drausmė | Skaidrumas | 5% | Mokesčių inspekcijos įrašas |
-| 12 | `legal_standing` — Teisinis statusas | Tęstinumas | 7% | Registrų centro įrašas |
-| 13 | `reporting_compliance` — Atskaitomybės drausmė | Skaidrumas | 10% | Ataskaitų pateikimo įrašas |
-| 14 | `governance_quality` — Valdymo kokybė | Skaidrumas | 6% | Valdymo organų įrašas |
-| 15 | `ownership_transparency` — Nuosavybės skaidrumas | Skaidrumas | 5% | JADIS įrašas |
+| 1 | Finansinis pajėgumas | Finansinė drausmė | 8% | 1 metų pajamos |
+| 2 | Augimo trajektorija | Finansinė drausmė | 4% | 2 metų pajamos |
+| 3 | Pelningumo tendencija | Finansinė drausmė | 4% | 1 metų pelnas |
+| 4 | Mokestinė drausmė | Finansinė drausmė | 5% | Mokesčių inspekcijos įrašas |
+| 5 | Tęstinumo kapitalas | Tęstinumas | 8% | Įkūrimo metai arba 1 m. duomenys |
+| 6 | Teisinis statusas | Tęstinumas | 7% | Juridinių asmenų registro įrašas |
+| 7 | Viešumas | Rinkos patikimumas | 7% | 1+ paminėjimas viešojoje erdvėje |
+| 8 | Bendruomenės pasitikėjimas | Rinkos patikimumas | 7% | 1+ vertinimas |
+| 9 | Verslo atsparumas | Atsparumas | 7% | 3 metų pajamos |
+| 10 | Darbuotojų gerovė | Atsparumas | 7% | 1 m. atlyginimo arba darbuotojų duomenys |
+| 11 | Duomenų pilnumas | Skaidrumas | 2% | 1 metų duomenys |
+| 12 | Viešųjų pirkimų patikimumas | Skaidrumas | 9% | 1+ dalyvavimas viešuosiuose pirkimuose |
+| 13 | Atskaitomybės drausmė | Skaidrumas | 10% | Finansinių ataskaitų pateikimo įrašas |
+| 14 | Valdymo kokybė | Skaidrumas | 6% | Valdymo organų registracijos įrašas |
+| 15 | Nuosavybės skaidrumas | Skaidrumas | 5% | Akcininkų registro įrašas |
 
-### Matematinis auditas (v5.1.1)
+### Skaičiavimo principai
 
-Algoritmas matematiškai audituotas. Pagrindiniai pataisymai:
-- Pajamų variacijos koeficientas pakeistas krypties santykiu (CV baudė sparčiai augančias įmones)
-- Mokestinės drausmės lubos pakeltos (švarios įmonės dabar gali pasiekti 10.0)
-- Valdymo kokybė normalizuota pagal teisinę formą (UAB nebaudžiama už valdybos nebuvimą)
-- Istorinio ataskaitų nepateikimo atsigavimo kreivė pataisyta
-- Viešųjų pirkimų dalyvavimo dažnis: nuolatinė logaritminė skalė vietoj laiptinės funkcijos
+**1. Null-išskyrimo principas.** Signalai, kuriems trūksta duomenų, grąžina `null` ir yra visiškai pašalinami iš vertinimo. Svoriai automatiškai perskaičiuojami tarp aktyvių signalų. Jokių dirbtinių numatytųjų reikšmių.
+
+**2. Patikimumo balas.** Skaičiuojamas pagal formulę: `patikimumas = vidutinis signalų patikimumas × signalų padengimas`. Įmonė su 5 iš 15 signalų niekada neviršys 33% patikimumo, nepriklausomai nuo tų signalų kokybės.
+
+**3. Krypties matavimas.** Augimo nuoseklumas vertinamas pagal metų su teigiamu augimu dalį, o ne pagal variacijos koeficientą. Tai užtikrina, kad sparčiai augančios įmonės nebūtų baudžiamos dėl kintančio augimo tempo.
+
+**4. Valstybinių duomenų prioritetas.** Skaidrumo ašis (32%) turi didžiausią svorį ir yra skirta dirbti su oficialiais valstybinių registrų duomenimis — mokesčių inspekcija, juridinių asmenų registras, akcininkų registras, viešieji pirkimai.
+
+**5. Platformos neutralumas.** Vertinimai nepriklauso nuo narystės ar prenumeratos jokioje platformoje. Duomenų pilnumo signalas turi tik 2% svorį.
+
+### Duomenų šaltiniai
+
+Algoritmas priima duomenis iš bet kurio šaltinio. Sąsajos suprojektuotos pagal tipinius Europos verslo registrų duomenis:
+
+| Sąsaja | Tipinis šaltinis | Būtinas? |
+|--------|-----------------|----------|
+| `yearlyRows` | Finansinės ataskaitos (pajamos, pelnas, darbuotojai, atlyginimai) | Taip (bent 1 metai) |
+| `mentions` | Viešosios erdvės stebėsena (SERP, naujienų portalai) | Ne |
+| `taxData` | Mokesčių inspekcija | Ne |
+| `legalData` | Juridinių asmenų registras | Ne |
+| `reportingData` | Ataskaitų nepateikusiųjų sąrašai | Ne |
+| `governanceData` | Valdymo organų registras | Ne |
+| `ownershipData` | Akcininkų / dalyvių registras | Ne |
+| `procurementData` | Viešųjų pirkimų duomenys | Ne |
+
+---
+
+## Prisidėjimas ir verifikacija
+
+EBRS yra atviras protokolas. Algoritmo kodas — viešas ir skaidrus. Kiekvieno signalo matematinė formulė matoma `src/signals.ts` faile.
+
+### Kaip prisidėti
+
+- **Matematinė peržiūra** — audituokite signalų formules, nustatykite šališkumą ar klaidas
+- **Signalų patobulinimai** — pasiūlykite geresnius matematinius modelius
+- **Nauji signalai** — papildomi duomenų šaltiniai (ESG, kredito reitingai, teismo bylos)
+- **Šalių adaptacijos** — duomenų šaltinių susiejimai kitų Europos šalių registrams
+- **Nepriklausoma verifikacija** — akademinė ar institucinė metodologijos peržiūra
+- **Kalbos** — signalų pavadinimai ir paaiškinimai papildomomis kalbomis
+
+### Verifikacijos statusas
+
+Šis algoritmas **dar nebuvo nepriklausomai verifikuotas**. Jis publikuojamas kaip eksperimentinis projektas su tikslu:
+
+1. Suteikti galimybę bendruomenei peržiūrėti ir kritikuoti metodologiją
+2. Skatinti diskusiją apie standartizuotą verslo reputacijos vertinimą Europoje
+3. Surinkti atsiliepimus iš ekonomistų, duomenų mokslininkų ir reguliavimo ekspertų
+4. Paruošti pagrindą nepriklausomai verifikacijai per būsimą fondą
+
+Jei esate ekonomistas, statistikas, duomenų mokslininkas ar reguliavimo ekspertas ir norite prisidėti prie peržiūros — susisiekite per [GitHub Issues](https://github.com/bolivian-peru/ebrs-score/issues).
+
+### Planuojamas fondas
+
+Planuojama įsteigti nepriklausomą fondą EBRS standarto verifikavimui ir priežiūrai. Fondo tikslai:
+
+- Nepriklausomas metodologijos auditas
+- Svorių ir signalų peržiūra ekonomistų ekspertų grupės
+- Versijų valdymas ir atgalinio suderinamumo politika
+- Šalių adaptacijų koordinavimas
+- Sertifikavimo programa įdiegusiems EBRS organizacijoms
+
+---
+
+## Programinė sąsaja (API)
+
+### `computeReputation(data: CompanyData): ReputationScore | null`
+
+Pagrindinė vertinimo funkcija. Grąžina `null`, jei nė vienas signalas neturi pakankamai duomenų.
+
+### `SIGNAL_REGISTRY: SignalDefinition[]`
+
+15 signalų registras. Kiekvienas turi `compute(data) => SignalResult | null`.
+
+### `EBRS_AXES: Record<EbrsAxis, { name, description }>`
+
+5 ašių metaduomenys.
+
+---
 
 ## Licencija
 
-MIT
+**MIT** — laisvai naudoti, modifikuoti ir platinti bet kokiam tikslui, įskaitant komercinį.
+
+Ši licencija nereiškia, kad algoritmas yra verifikuotas ar sertifikuotas. Naudojimas produkcinėje aplinkoje — naudotojo atsakomybė.
+
+---
+
+# English Documentation
+
+## EBRS — European Business Reputation Standard
+
+> **Version 5.1.1 · Beta** — Experimental open-source protocol for standardized business reputation scoring. Published for transparency and community review. Not independently audited — use in production at your own discretion.
+
+### Install
+
+```bash
+npm install ebrs-score
+```
+
+### Quick Start
+
+```typescript
+import { computeReputation } from 'ebrs-score'
+
+const score = computeReputation({
+  companyId: 1,
+  companyName: 'Example Ltd',
+  yearlyRows: [
+    { year: 2023, revenue: 5000000, profit: 400000, netProfit: 350000, employees: 45, salary: 1800, sodraDebt: 0 },
+    { year: 2024, revenue: 6200000, profit: 550000, netProfit: 480000, employees: 52, salary: 2100, sodraDebt: 0 },
+  ],
+  mentions: [], ratingAverage: null, ratingCount: 0, topYearsListed: 0,
+  foundedYear: 2015, activationStatus: 'inactive',
+  procurementData: null, taxData: null, legalData: null,
+  reportingData: null, governanceData: null, ownershipData: null,
+})
+
+if (score) {
+  console.log(`${score.overall}/10 (${score.confidence}% confidence, risk: ${score.riskLevel})`)
+}
+```
+
+### 5 Axes
+
+| Axis | Weight | What it measures |
+|------|--------|-----------------|
+| Continuity | 15% | Business longevity, legal standing |
+| Financial | 21% | Revenue, margins, growth, tax compliance |
+| Market | 14% | Public presence, community trust |
+| Resilience | 14% | Revenue stability, workforce health |
+| Transparency | 32% | Filing compliance, governance, ownership, procurement |
+
+### Design Principles
+
+1. **Null-exclusion** — signals without data are excluded, not defaulted
+2. **Confidence scoring** — reflects actual data coverage
+3. **Direction over volatility** — rewards consistent growth direction
+4. **Government data priority** — Transparency axis (32%) is heaviest
+5. **No platform bias** — scores independent of any subscription
+
+### Contributing
+
+See the Lithuanian section above for full contribution guidelines. In short: mathematical reviews, new signals, country adaptations, and independent verification are all welcome.
+
+### License
+
+MIT — free for any purpose, including commercial use.
+
+This license does not imply the algorithm is verified or certified. Use in production at your own risk.

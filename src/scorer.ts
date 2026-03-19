@@ -21,7 +21,7 @@ export const ALGORITHM_VERSION = 'v5.1.1'
  *
  * @example
  * ```ts
- * import { computeReputation } from 'ebrs-score'
+ * import { computeReputation } from './dist/index.js'
  *
  * const score = computeReputation({
  *   companyId: 1,

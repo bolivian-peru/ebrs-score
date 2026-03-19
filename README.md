@@ -34,16 +34,19 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 
 ---
 
-## Diegimas
+## Naudojimas
 
 ```bash
-npm install ebrs-score
+git clone https://github.com/bolivian-peru/ebrs-score.git
+cd ebrs-score
+npm install
+npm run build
 ```
 
-## Naudojimo pavyzdys
+### Pavyzdys
 
 ```typescript
-import { computeReputation } from 'ebrs-score'
+import { computeReputation } from './dist/index.js'
 
 const rezultatas = computeReputation({
   companyId: 1,
@@ -206,16 +209,17 @@ Pagrindinė vertinimo funkcija. Grąžina `null`, jei nė vienas signalas neturi
 
 > **Version 5.1.1 · Beta** — Experimental open-source protocol for standardized business reputation scoring. Published for transparency and community review. Not independently audited — use in production at your own discretion.
 
-### Install
+### Usage
 
 ```bash
-npm install ebrs-score
+git clone https://github.com/bolivian-peru/ebrs-score.git
+cd ebrs-score && npm install && npm run build
 ```
 
-### Quick Start
+### Example
 
 ```typescript
-import { computeReputation } from 'ebrs-score'
+import { computeReputation } from './dist/index.js'
 
 const score = computeReputation({
   companyId: 1,

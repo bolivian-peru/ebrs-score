@@ -6,7 +6,7 @@
  *
  * @example
  * ```ts
- * import { computeReputation, SIGNAL_REGISTRY } from 'ebrs-score'
+ * import { computeReputation, SIGNAL_REGISTRY } from './dist/index.js'
  *
  * const score = computeReputation({
  *   companyId: 1,

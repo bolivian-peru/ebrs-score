@@ -4,8 +4,8 @@
  * Signal-based architecture: each data source is a "signal" that produces
  * a score + confidence. New signals can be added without changing the core engine.
  *
- * EBRS 5-Axis Model (v5.1):
- *   Tęstinumas (Continuity)         — longevity, TOP list consistency, legal standing
+ * EBRS 5-Axis Model (v5.2):
+ *   Tęstinumas (Continuity)         — longevity, data history, legal standing
  *   Finansinė drausmė (Financial)   — revenue, margins, growth, tax discipline
  *   Rinkos patikimumas (Market)     — SERP presence, community ratings
  *   Atsparumas (Resilience)         — volatility resistance, workforce stability
@@ -172,8 +172,9 @@ export interface ReputationScore {
   confidence: number                  // 0–100%
   signals: StoredSignalScore[]        // individual signal breakdowns
   ebrsAxes: EbrsAxisScore[]           // EBRS 5-axis breakdown
-  algorithmVersion: string            // e.g., "v4.0"
+  algorithmVersion: string            // e.g., "v5.2.0"
   dataYears: number                   // how many years of financial data
+  signalCoverage: number              // 0–100%, how many of 15 signals were computable
   // Derived labels
   riskLevel: string
   growthTrend: string

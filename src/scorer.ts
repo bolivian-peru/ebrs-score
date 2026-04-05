@@ -11,7 +11,7 @@ import { SIGNAL_REGISTRY } from './signals.js'
 import type { CompanySignalData, ReputationScore, StoredSignalScore, EbrsAxisScore, EbrsAxis } from './types.js'
 import { EBRS_AXES } from './types.js'
 
-export const ALGORITHM_VERSION = 'v5.1.1'
+export const ALGORITHM_VERSION = 'v5.2.0'
 
 /**
  * Compute reputation score from company data.
@@ -125,6 +125,11 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
     })
   }
 
+  // Coverage metadata — how many of the 15 possible signals were computable.
+  // Companies with fewer signals may have inflated scores because problematic
+  // dimensions (e.g., tax issues, procurement red flags) were simply absent.
+  const signalCoverageRatio = Math.round(signalCoverage * 100)
+
   return {
     overall: roundedOverall,
     confidence,
@@ -137,5 +142,6 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
     marketPosition,
     margin,
     consecutiveProfitYears,
+    signalCoverage: signalCoverageRatio,
   }
 }

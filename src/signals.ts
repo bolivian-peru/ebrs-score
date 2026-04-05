@@ -289,8 +289,12 @@ const workforceHealth: SignalDefinition = {
     if (sorted.length === 0) return null
 
     const latest = sorted[sorted.length - 1]
-    const latestSalary = Number(latest.salary ?? 0)
     const sodra = Number(latest.sodraDebt ?? 0)
+
+    // Use last valid salary row, NOT latest revenue row — the latest revenue row
+    // may have missing salary data, which would manufacture a false 0 salary.
+    const salaryRows = sorted.filter(r => r.salary && Number(r.salary) > 0)
+    const latestSalary = salaryRows.length > 0 ? Number(salaryRows[salaryRows.length - 1].salary!) : 0
 
     // Salary percentile (against Lithuanian market distribution)
     let salaryScore: number | null = null
@@ -298,14 +302,14 @@ const workforceHealth: SignalDefinition = {
       salaryScore = percentileScore(latestSalary, SALARY_BREAKPOINTS)
     }
 
-    // Salary growth (CAGR over available years)
+    // Salary growth (CAGR over available salary rows only)
     let salaryGrowthScore: number | null = null
-    const salaryRows = sorted.filter(r => r.salary && Number(r.salary) > 0)
     if (salaryRows.length >= 2) {
       const firstSalary = Number(salaryRows[0].salary!)
+      const lastSalaryVal = Number(salaryRows[salaryRows.length - 1].salary!)
       const span = salaryRows[salaryRows.length - 1].year - salaryRows[0].year
       if (span > 0 && firstSalary > 0) {
-        const salCagr = (Math.pow(latestSalary / firstSalary, 1 / span) - 1) * 100
+        const salCagr = (Math.pow(lastSalaryVal / firstSalary, 1 / span) - 1) * 100
         salaryGrowthScore = sigmoid(salCagr, 3, 0.2) // 3% salary CAGR = midpoint
       }
     }
@@ -854,30 +858,29 @@ const taxDiscipline: SignalDefinition = {
     if (!tax.hasDebt || tax.debtOverdue === 0) {
       base = 9.5
     } else {
-      // Continuous log penalty: 1K€ → ~7, 10K€ → ~5, 100K€ → ~3, 1M€ → ~1
-      base = clamp(9.5 - Math.log10(tax.debtOverdue) * 2, 0, 9.5)
+      // Continuous log penalty, shifted so small debts are moderate:
+      // €1K → ~7.5, €10K → ~5.5, €100K → ~3.5, €1M → ~1.5
+      // The (log10 - 2) shift means debts under ~€100 barely register.
+      base = clamp(9.5 - (Math.log10(tax.debtOverdue) - 2) * 2, 0, 9.5)
     }
 
-    // Tax growth bonus (if both current and previous year available)
-    let growthBonus = 0
-    if (tax.annualTaxCurrent !== null && tax.annualTaxPrevious !== null && tax.annualTaxPrevious > 0) {
-      const growth = (tax.annualTaxCurrent - tax.annualTaxPrevious) / tax.annualTaxPrevious
-      if (growth > 0.10) growthBonus = 1.0
-      else if (growth > 0.05) growthBonus = 0.5
-      else if (growth < -0.20) growthBonus = -1.0
-    }
+    // Tax growth comparison REMOVED in v5.2.
+    // VMI "sumokėti mokesčiai" publishes cumulative YTD values updated monthly.
+    // Comparing annualTaxCurrent (YTD) to annualTaxPrevious (full year) produces
+    // meaningless ratios unless the ETL aligns same-month periods. Since we cannot
+    // guarantee period alignment, we score only on debt status (objective, binary).
+    const growthBonus = 0
 
     const score = clamp(base + growthBonus, 0, 10)
-    const hasHistory = tax.annualTaxCurrent !== null && tax.annualTaxPrevious !== null
-    const confidence = 0.7 + (hasHistory ? 0.3 : 0)
+    const confidence = 0.7 // debt-only, no YoY comparison
 
     return {
       score,
       confidence,
-      dataPoints: 1 + (hasHistory ? 1 : 0),
+      dataPoints: 1,
       reasoning: tax.hasDebt && tax.debtOverdue > 0
         ? `Pradelsta mokestinė skola: ${formatEur(tax.debtOverdue)}`
-        : `Mokestinių skolų nėra` + (hasHistory ? `, mokesčių pokytis: ${growthBonus > 0 ? '+' : ''}${(growthBonus * 100).toFixed(0)}%` : ''),
+        : `Mokestinių skolų nėra`,
       details: { base, growthBonus, ...tax },
     }
   },
@@ -925,10 +928,11 @@ const RC_FORM_MAP: Record<string, string> = {
   'cc8c8e1a-e309-42ea-aea5-ab0af7777e1e': 'Kooperacijos UAB',
 }
 
-// Resolve UUID to label, with fallback
+// Resolve UUID to label. Unknown UUIDs → 'Nežinomas', not 'Veikianti'.
+// Treating unknown future classifier IDs as active is unsafe — unknown should stay unknown.
 function resolveStatus(uuid: string | null): string {
-  if (!uuid) return 'Veikianti'
-  return RC_STATUS_MAP[uuid] ?? 'Veikianti'
+  if (!uuid) return 'Nežinomas'
+  return RC_STATUS_MAP[uuid] ?? 'Nežinomas'
 }
 function resolveForm(uuid: string | null): string {
   if (!uuid) return ''
@@ -980,8 +984,9 @@ const legalStanding: SignalDefinition = {
       ageScore = clamp(Math.log2(Math.max(age, 1) + 1) / Math.log2(50) * 8, 0, 8)
     }
 
-    // Active status bonus
-    const activeBonus = legal.isActiveInRc ? 2.0 : 0
+    // Active status bonus — only if status is known (not 'Nežinomas')
+    const statusKnown = statusLabel !== 'Nežinomas'
+    const activeBonus = legal.isActiveInRc ? 2.0 : (statusKnown ? 1.0 : 0)
 
     // Status stability: no status change in last 2 years
     let stabilityBonus = 0
@@ -991,7 +996,8 @@ const legalStanding: SignalDefinition = {
     }
 
     const score = clamp(ageScore + activeBonus + stabilityBonus, 0, 10)
-    const confidence = 0.9
+    // Lower confidence when status UUID is unknown — we can't be sure it's healthy
+    const confidence = statusKnown ? 0.9 : 0.6
 
     return {
       score,

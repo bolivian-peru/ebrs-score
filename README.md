@@ -1,7 +1,7 @@
 # EBRS — Europos verslo reputacijos standartas
 ### European Business Reputation Standard
 
-> **Versija 5.1.1 · Beta**
+> **Versija 5.2.0 · Beta**
 >
 > Eksperimentinis atvirojo kodo protokolas verslo reputacijos vertinimui. Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos verifikacijos tikslais. Algoritmas dar nėra nepriklausomai audituotas — naudokite produkcinėje aplinkoje savo atsakomybe.
 
@@ -23,7 +23,7 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 | | |
 |---|---|
 | **Stadija** | Beta (eksperimentinis) |
-| **Versija** | 5.1.1 |
+| **Versija** | 5.2.0 |
 | **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
 | **Priklausomybės** | 0 (tik TypeScript) |
 | **Testai** | 8 automatiniai testai |
@@ -118,7 +118,7 @@ if (rezultatas) {
 
 **1. Null-išskyrimo principas.** Signalai, kuriems trūksta duomenų, grąžina `null` ir yra visiškai pašalinami iš vertinimo. Svoriai automatiškai perskaičiuojami tarp aktyvių signalų. Jokių dirbtinių numatytųjų reikšmių.
 
-**2. Patikimumo balas.** Skaičiuojamas pagal formulę: `patikimumas = vidutinis signalų patikimumas × signalų padengimas`. Įmonė su 5 iš 15 signalų niekada neviršys 33% patikimumo, nepriklausomai nuo tų signalų kokybės.
+**2. Patikimumo balas.** Skaičiuojamas pagal formulę: `patikimumas = svertinis vidutinis signalų patikimumas × signalų padengimas`. Įmonė su 5 iš 15 signalų niekada neviršys 33% patikimumo, nepriklausomai nuo tų signalų kokybės.
 
 **3. Krypties matavimas.** Augimo nuoseklumas vertinamas pagal metų su teigiamu augimu dalį, o ne pagal variacijos koeficientą. Tai užtikrina, kad sparčiai augančios įmonės nebūtų baudžiamos dėl kintančio augimo tempo.
 
@@ -207,7 +207,7 @@ Pagrindinė vertinimo funkcija. Grąžina `null`, jei nė vienas signalas neturi
 
 ## EBRS — European Business Reputation Standard
 
-> **Version 5.1.1 · Beta** — Experimental open-source protocol for standardized business reputation scoring. Published for transparency and community review. Not independently audited — use in production at your own discretion.
+> **Version 5.2.0 · Beta** — Experimental open-source protocol for standardized business reputation scoring. Published for transparency and community review. Not independently audited — use in production at your own discretion.
 
 ### Usage
 

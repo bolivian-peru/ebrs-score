@@ -1,5 +1,5 @@
 /**
- * Reputation Scoring Signals — EBRS v5.1 Signal Registry
+ * Reputation Scoring Signals — EBRS v5.2 Signal Registry
  *
  * 15 signals across 5 EBRS axes:
  *   Tęstinumas (15%):         continuity_capital, legal_standing
@@ -260,7 +260,7 @@ const profitabilityTrend: SignalDefinition = {
     // Confidence based on how many margin data points we have
     const marginFactor = Math.min(margins.length / 8, 1)
     const effFactor = hasEfficiency ? 1 : 0
-    const confidence = marginFactor * 0.5 + (consecutiveYears > 0 ? 0.3 : 0) + effFactor * 0.2
+    const confidence = clamp(marginFactor * 0.5 + (consecutiveYears > 0 ? 0.3 : 0) + effFactor * 0.2, 0, 1)
 
     return {
       score,
@@ -779,7 +779,7 @@ const procurementIntegrity: SignalDefinition = {
     if (!proc || proc.bidsCount === 0) return null
 
     // Sub-indicator 1: Bid frequency (activity level) — continuous log scale
-    // 1 bid = 3, 5 bids = 6, 10 bids = 7.5, 20+ = 9
+    // 1 bid = 3, 4 bids = 7, 8 bids = 9, 10+ bids = 9 (capped)
     const bidFreqScore = clamp(3 + Math.log2(proc.bidsCount) * 2, 3, 9)
 
     // Sub-indicator 2: Win rate (competitiveness)
@@ -858,10 +858,16 @@ const taxDiscipline: SignalDefinition = {
     if (!tax.hasDebt || tax.debtOverdue === 0) {
       base = 9.5
     } else {
+      // Defensive: treat negative debt as zero (no debt)
+      const debt = Math.max(tax.debtOverdue, 0)
+      if (debt === 0) {
+        base = 9.5
+      } else {
       // Continuous log penalty, shifted so small debts are moderate:
       // €1K → ~7.5, €10K → ~5.5, €100K → ~3.5, €1M → ~1.5
       // The (log10 - 2) shift means debts under ~€100 barely register.
-      base = clamp(9.5 - (Math.log10(tax.debtOverdue) - 2) * 2, 0, 9.5)
+      base = clamp(9.5 - (Math.log10(debt) - 2) * 2, 0, 9.5)
+      }
     }
 
     // Tax growth comparison REMOVED in v5.2.

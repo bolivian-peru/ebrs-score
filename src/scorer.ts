@@ -11,7 +11,21 @@ import { SIGNAL_REGISTRY } from './signals.js'
 import type { CompanySignalData, ReputationScore, StoredSignalScore, EbrsAxisScore, EbrsAxis } from './types.js'
 import { EBRS_AXES } from './types.js'
 
-export const ALGORITHM_VERSION = 'v5.2.0'
+export const ALGORITHM_VERSION = 'v5.3.0'
+
+// ── v5.3 coverage shrinkage (survivorship-bias correction) ──
+// A company with few computable signals has its weights re-normalized across
+// ONLY the present signals. If the absent signals are the adverse ones (tax
+// debt, late/non-filing, bankruptcy, ownership opacity), the raw score is
+// inflated purely by absence of scrutiny - a data-sparse company could
+// out-score a fully-examined one. v5.3 regresses the headline `overall` toward
+// a neutral prior: each MISSING signal counts as a fractional neutral
+// pseudo-observation. Full coverage (all signals) = no shrinkage; sparse
+// coverage = strong pull toward neutral. Per-signal and per-axis scores stay
+// RAW (they report measured dimensions); only `overall` is regularised for how
+// complete the evidence is. Both constants are deliberately tunable.
+const COVERAGE_PRIOR = 5.0                     // neutral score the overall regresses toward
+const COVERAGE_PRIOR_WEIGHT_PER_MISSING = 0.5  // each missing signal = half a neutral pseudo-vote
 
 /**
  * Compute reputation score from company data.
@@ -79,6 +93,14 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
 
   const overall = activeSignals.reduce((s, sig) => s + sig.score * sig.weight, 0)
 
+  // v5.3 coverage shrinkage: regress the raw weighted overall toward the neutral
+  // prior in proportion to how many of the signals are MISSING. Full coverage →
+  // priorWeight 0 → unchanged.
+  const missingSignals = SIGNAL_REGISTRY.length - activeSignals.length
+  const priorWeight = missingSignals * COVERAGE_PRIOR_WEIGHT_PER_MISSING
+  const shrunkOverall = (overall * activeSignals.length + COVERAGE_PRIOR * priorWeight)
+    / (activeSignals.length + priorWeight)
+
   // Confidence = weighted avg of signal confidences x signal coverage
   const signalCoverage = activeSignals.length / SIGNAL_REGISTRY.length
   const avgConfidence = activeSignals.reduce((s, sig) => s + sig.confidence * sig.weight, 0)
@@ -87,7 +109,7 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
   const sortedRevRows = data.yearlyRows.filter(r => r.revenue && r.revenue > 0).sort((a, b) => a.year - b.year)
   const dataYears = sortedRevRows.length
 
-  const roundedOverall = Math.round(overall * 10) / 10
+  const roundedOverall = Math.round(shrunkOverall * 10) / 10 // v5.3: coverage-adjusted
   const riskLevel = roundedOverall >= 7 ? 'Low' : roundedOverall >= 5 ? 'Medium' : roundedOverall >= 3 ? 'High' : 'Critical'
 
   const growthSig = activeSignals.find(s => s.id === 'growth_trajectory')

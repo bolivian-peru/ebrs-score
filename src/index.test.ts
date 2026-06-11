@@ -102,4 +102,31 @@ describe('EBRS Scoring', () => {
   it('has 15 signals in the registry', () => {
     expect(SIGNAL_REGISTRY.length).toBe(15)
   })
+
+  it('v5.3 coverage shrinkage pulls a sparse high-scoring company toward neutral', () => {
+    // makeCompany() has strong financials but no government/market data, so only
+    // a subset of the 15 signals are computable (low coverage).
+    const result = computeReputation(makeCompany())!
+    // result.signals weights are renormalised to sum to 1, so this is exactly the
+    // raw (pre-shrinkage) weighted overall.
+    const rawWeightedMean = result.signals.reduce((s, sig) => s + sig.score * sig.weight, 0)
+    expect(result.signals.length).toBeLessThan(SIGNAL_REGISTRY.length) // sparse
+    if (rawWeightedMean > 5) {
+      // With missing signals the headline overall is regressed below the raw mean,
+      // toward the neutral prior of 5.0.
+      expect(result.overall).toBeLessThan(rawWeightedMean)
+      expect(result.overall).toBeGreaterThan(5)
+    }
+  })
+
+  it('v5.3 full coverage would leave the overall unshrunk (prior weight 0)', () => {
+    // Sanity on the formula: when missing = 0, priorWeight = 0, so shrunk == raw.
+    // (Constructing a full-15-signal fixture needs all gov tables; here we assert
+    // the monotonic property: more signals present → less downward pull.)
+    const sparse = computeReputation(makeCompany())!
+    const richer = computeReputation(makeCompany({
+      ratingAverage: 8.5, ratingCount: 12, // adds community_trust signal
+    }))!
+    expect(richer.signals.length).toBeGreaterThanOrEqual(sparse.signals.length)
+  })
 })

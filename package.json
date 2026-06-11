@@ -1,7 +1,7 @@
 {
   "name": "ebrs-score",
-  "version": "5.2.0",
-  "description": "EBRS (European Business Reputation Standard) — open-source company reputation scoring algorithm. 15 signals, 5 axes, null-exclusion principle.",
+  "version": "5.3.0",
+  "description": "EBRS (European Business Reputation Standard) — open-source company reputation scoring algorithm. 15 signals, 5 axes, null-exclusion + coverage-shrinkage principles.",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "type": "module",

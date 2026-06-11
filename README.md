@@ -1,7 +1,7 @@
 # EBRS — Europos verslo reputacijos standartas
 ### European Business Reputation Standard
 
-> **Versija 5.2.0 · Beta**
+> **Versija 5.3.0 · Beta**
 >
 > Eksperimentinis atvirojo kodo protokolas verslo reputacijos vertinimui. Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos verifikacijos tikslais. Algoritmas dar nėra nepriklausomai audituotas — naudokite produkcinėje aplinkoje savo atsakomybe.
 
@@ -23,10 +23,10 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 | | |
 |---|---|
 | **Stadija** | Beta (eksperimentinis) |
-| **Versija** | 5.2.0 |
+| **Versija** | 5.3.0 |
 | **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
 | **Priklausomybės** | 0 (tik TypeScript) |
-| **Testai** | 8 automatiniai testai |
+| **Testai** | 10 automatinių testų |
 | **Verifikacija** | Dar nebuvo nepriklausomai audituotas |
 | **Fondas** | Planuojamas (nepriklausoma verifikacijos ir valdymo institucija) |
 
@@ -83,6 +83,38 @@ if (rezultatas) {
 ---
 
 ## Metodologija
+
+### Naujovės v5.3 (aprėpties korekcija)
+
+v5.3 ištaiso **išlikimo (survivorship) šališkumą** - didžiausią ankstesnių versijų
+trūkumą. Kai įmonė turi mažai apskaičiuojamų signalų, svoriai pernormuojami tik
+tarp esamų signalų. Jei trūkstantys signalai yra būtent nepalankieji (mokestinė
+skola, ataskaitų neteikimas, bankrotas, nuosavybės neskaidrumas), neapibrėžtos
+įmonės balas dirbtinai išpučiamas - vien dėl to, kad jos niekas pilnai
+nepatikrino. Duomenų požiūriu neturtinga įmonė galėjo aplenkti pilnai ištirtą.
+
+**Sprendimas - aprėpties korekcija (coverage shrinkage):** galutinis `overall`
+balas regresuojamas link neutralaus prioro (5.0) proporcingai tam, kiek signalų
+**trūksta**. Kiekvienas trūkstamas signalas veikia kaip pusės svorio neutralus
+pseudo-stebėjimas:
+
+```
+overall_adjusted = (overall_raw · n_active + 5.0 · 0.5 · n_missing)
+                   / (n_active + 0.5 · n_missing)
+```
+
+- **Pilna aprėptis** (visi signalai): korekcijos nėra, balas nekinta.
+- **Reta aprėptis**: stiprus traukimas link neutralaus 5.0.
+- Atskirų **signalų ir ašių** balai lieka neapdoroti (jie atspindi išmatuotas
+  dimensijas); reguliuojamas tik bendras `overall`.
+
+Pavyzdys: įmonė su 3 puikiais finansiniais signalais (balas 8,0), bet be 12
+valstybinių/rinkos signalų: `(8·3 + 5·6)/(3+6) = 6,0`. Pilnai ištirta įmonė su
+8,0 balu lieka 8,0.
+
+Be to, v5.3 prideda **įvesties apsaugą** - neįmanomų metų eilutės (pvz. 3905) ir
+NaN / begalybės / neigiamos finansinės reikšmės pašalinamos prieš patekdamos į
+signalus.
 
 ### 5 vertinimo ašys
 

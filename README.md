@@ -1,9 +1,9 @@
 # EBRS — Europos verslo reputacijos standartas
 ### European Business Reputation Standard
 
-> **Versija 6.0.0 · Beta**
+> **Versija 6.0.0 · Viešoji peržiūra (Public Review)**
 >
-> Atviras verslo reputacijos vertinimo protokolas (beta) — kandidatas į standartą.
+> Atviras verslo reputacijos vertinimo protokolas — kandidatas į standartą, viešosios peržiūros stadijoje.
 > Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos
 > verifikacijos tikslais. EBRS NĖRA Europos standartizacijos organizacijų (CEN, CENELEC,
 > ETSI) priimtas standartas ir tokiu netaps be nepriklausomos verifikacijos. Algoritmas
@@ -26,7 +26,7 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 
 | | |
 |---|---|
-| **Stadija** | Beta (eksperimentinis) |
+| **Stadija** | Viešoji peržiūra — metodika paskelbta, taikoma produkcijoje, atvira nepriklausomai peržiūrai |
 | **Versija** | 6.0.0 |
 | **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
 | **Priklausomybės** | 0 (tik TypeScript) |

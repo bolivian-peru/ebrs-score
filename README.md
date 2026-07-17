@@ -273,7 +273,7 @@ Pagrindinė vertinimo funkcija. Grąžina `null`, jei nė vienas signalas neturi
 
 ## EBRS — European Business Reputation Standard
 
-> **Version 5.2.0 · Beta** — Experimental open-source protocol for standardized business reputation scoring. Published for transparency and community review. Not independently audited — use in production at your own discretion.
+> **Version 6.0.0 · Public Review** — Open protocol for standardized business reputation scoring, published for transparency and independent review. Applied in production; not yet independently audited — a candidate standard, not an adopted one.
 
 ### Usage
 

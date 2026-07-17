@@ -1,9 +1,13 @@
 # EBRS — Europos verslo reputacijos standartas
 ### European Business Reputation Standard
 
-> **Versija 5.3.0 · Beta**
+> **Versija 6.0.0 · Beta**
 >
-> Eksperimentinis atvirojo kodo protokolas verslo reputacijos vertinimui. Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos verifikacijos tikslais. Algoritmas dar nėra nepriklausomai audituotas — naudokite produkcinėje aplinkoje savo atsakomybe.
+> Atviras verslo reputacijos vertinimo protokolas (beta) — kandidatas į standartą.
+> Metodologija publikuojama viešai skaidrumo, bendruomenės peržiūros ir nepriklausomos
+> verifikacijos tikslais. EBRS NĖRA Europos standartizacijos organizacijų (CEN, CENELEC,
+> ETSI) priimtas standartas ir tokiu netaps be nepriklausomos verifikacijos. Algoritmas
+> dar nėra nepriklausomai audituotas — naudokite produkcinėje aplinkoje savo atsakomybe.
 
 ---
 
@@ -23,7 +27,7 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 | | |
 |---|---|
 | **Stadija** | Beta (eksperimentinis) |
-| **Versija** | 5.3.0 |
+| **Versija** | 6.0.0 |
 | **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
 | **Priklausomybės** | 0 (tik TypeScript) |
 | **Testai** | 10 automatinių testų |
@@ -83,6 +87,36 @@ if (rezultatas) {
 ---
 
 ## Metodologija
+
+### Naujovės v6.0 (terminalinės būsenos ir sąžiningi svoriai)
+
+v6.0 — išorinio kritinio audito (2026-07) išvadų įgyvendinimas:
+
+1. **Terminalinės būsenos riba.** Adityvi kompozicija leido 14 sveikų signalų
+   „perbalsuoti" vieną katastrofišką būseną: bankrutuojanti įmonė su gera
+   finansine istorija gaudavo ~6,3 balo. v6.0 registruotą nemokumą traktuoja
+   kaip RIBĄ, ne kaip balsą: aktyvus bankrotas (įsk. tyčinį) riboja balą iki
+   **2,9**, restruktūrizavimas — iki **4,9**. Riba taikoma po aprėpties
+   korekcijos ir visada deklaruojama per `capApplied` — niekada tyliai.
+
+2. **Svoriai sumuojasi tiksliai į 100 %.** v5.x publikuoti svoriai sumavosi į
+   96 % ir rėmėsi tyliu pernormavimu. Trūkstami 4 p.p. paskirstyti nemokumui
+   jautriems drausmės signalams: legal_standing 7→8 %, tax_discipline 5→6 %,
+   growth 4→5 %, profitability 4→5 %. Ašys: Tęstinumas 16 / Finansinė drausmė 24 /
+   Rinkos patikimumas 14 / Atsparumas 14 / Skaidrumas 32 = 100.
+
+3. **Nuosavybės signalas perrašytas.** Vertinamas JADIS deklaracijos
+   išsamumas ir galutinių naudos gavėjų atsekamumas; savininkų PILIETYBĖ ar
+   jurisdikcija balo nebekeičia (v5.x bausdavo užsienio juridinius asmenis
+   per se — analitiškai ir politiškai nepagrįsta ES kontekste).
+
+4. **Verdikto slenkstis.** Žemiau 5 iš 15 apskaičiuojamų signalų verdikto
+   juosta nerodoma (`scoreState: 'insufficient_data'`) — skaičius be verdikto.
+
+5. **Įvesties apsauga pačiame `computeReputation`.** v5.3 apsaugos (NaN /
+   begalybė / neįmanomi metai) veikė tik produkcinėje duomenų surinkimo
+   grandinėje; v6.0 jas perkelia į viešą įėjimo tašką (`sanitizeCompanyData`),
+   todėl tiesioginiai kvietimai apsaugoti taip pat.
 
 ### Naujovės v5.3 (aprėpties korekcija)
 

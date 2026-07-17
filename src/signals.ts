@@ -131,7 +131,7 @@ const growthTrajectory: SignalDefinition = {
   name: 'Augimo trajektorija',
   category: 'growth',
   ebrsAxis: 'financial',
-  defaultWeight: 0.04,
+  defaultWeight: 0.05,
   color: 'bg-blue-500',
 
   compute(data: CompanySignalData): SignalResult | null {
@@ -209,7 +209,7 @@ const profitabilityTrend: SignalDefinition = {
   name: 'Pelningumo tendencija',
   category: 'profitability',
   ebrsAxis: 'financial',
-  defaultWeight: 0.04,
+  defaultWeight: 0.05,
   color: 'bg-violet-500',
 
   compute(data: CompanySignalData): SignalResult | null {
@@ -845,7 +845,7 @@ const taxDiscipline: SignalDefinition = {
   name: 'Mokestinė drausmė',
   category: 'financial',
   ebrsAxis: 'financial',
-  defaultWeight: 0.05,
+  defaultWeight: 0.06,
   color: 'bg-lime-500',
 
   compute(data: CompanySignalData): SignalResult | null {
@@ -959,7 +959,7 @@ const legalStanding: SignalDefinition = {
   name: 'Teisinis statusas',
   category: 'continuity',
   ebrsAxis: 'continuity',
-  defaultWeight: 0.07,
+  defaultWeight: 0.08,
   color: 'bg-teal-500',
 
   compute(data: CompanySignalData): SignalResult | null {
@@ -1145,22 +1145,31 @@ const ownershipTransparency: SignalDefinition = {
     const owner = data.ownershipData
     if (!owner || !owner.hasJadisData) return null
 
-    const totalOwners = owner.ltNaturalPersons + owner.ltLegalEntities +
-      owner.foreignNaturalPersons + owner.foreignLegalEntities
+    // ── v6.0 rewrite: DECLARATION COMPLETENESS, not owner nationality ──
+    // v5.x penalized foreign legal entities per se, conflating jurisdiction
+    // with opacity. v6.0 scores what the declaration evidences: is
+    // ownership declared, and how directly are ultimate beneficial owners
+    // traceable from it? Natural persons (any country) are terminal UBO
+    // entries; legal entities (any country) add a lookup layer.
+    // Nationality never changes the score.
+    const naturalPersons = owner.ltNaturalPersons + owner.foreignNaturalPersons
+    const legalEntities = owner.ltLegalEntities + owner.foreignLegalEntities
+    const totalOwners = naturalPersons + legalEntities
 
     let score: number
+    let structure: string
     if (totalOwners === 0) {
-      score = 3 // Record exists but empty
-    } else if (owner.ltNaturalPersons > 0 && owner.ltLegalEntities === 0 && owner.foreignLegalEntities === 0) {
-      score = 9 // Direct LT person ownership = clearest
-    } else if (owner.ltNaturalPersons > 0 && owner.foreignLegalEntities === 0) {
-      score = 8 // LT natural persons + LT legal entities
-    } else if (owner.foreignLegalEntities === 0) {
-      score = 7 // No foreign entities
-    } else if (owner.foreignLegalEntities <= 2) {
-      score = 6 // Some foreign entities
+      score = 3 // Declaration record exists but names no owners
+      structure = 'deklaracija be dalyvių'
+    } else if (legalEntities === 0) {
+      score = 9 // All owners are natural persons - UBO directly traceable
+      structure = 'tiesioginė fizinių asmenų nuosavybė'
+    } else if (naturalPersons > 0) {
+      score = 8 // Mixed - part of the structure resolves to persons directly
+      structure = 'mišri struktūra (fiziniai ir juridiniai asmenys)'
     } else {
-      score = 5 // Complex multi-layer foreign ownership
+      score = 7 // Only legal entities - UBO requires a further layer lookup
+      structure = 'daugiapakopė struktūra (tik juridiniai asmenys)'
     }
 
     const confidence = 0.80
@@ -1169,17 +1178,14 @@ const ownershipTransparency: SignalDefinition = {
       score,
       confidence,
       dataPoints: 1,
-      reasoning: `Savininkai: ${owner.ltNaturalPersons} LT fiziniai, ${owner.ltLegalEntities} LT juridiniai` +
-        (owner.foreignNaturalPersons + owner.foreignLegalEntities > 0
-          ? `, ${owner.foreignNaturalPersons + owner.foreignLegalEntities} užsienio`
-          : ''),
-      details: { ...owner, totalOwners },
+      reasoning: `JADIS deklaracija: ${totalOwners} ${totalOwners === 1 ? 'dalyvis' : 'dalyviai'} - ${structure}`,
+      details: { ...owner, totalOwners, naturalPersons, legalEntities, structure },
     }
   },
 }
 
 // ════════════════════════════════════════════════════
-// SIGNAL REGISTRY (EBRS v5.1 — 15 signals, 5 axes)
+// SIGNAL REGISTRY (EBRS v6.0 — 15 signals, 5 axes, weights sum to 1.00)
 //
 // Weight distribution per EBRS axis (when all signals active):
 //   Tęstinumas:         0.15 (continuity_capital 0.08 + legal_standing 0.07)

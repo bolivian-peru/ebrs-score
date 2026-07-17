@@ -11,7 +11,54 @@ import { SIGNAL_REGISTRY } from './signals.js'
 import type { CompanySignalData, ReputationScore, StoredSignalScore, EbrsAxisScore, EbrsAxis } from './types.js'
 import { EBRS_AXES } from './types.js'
 
-export const ALGORITHM_VERSION = 'v5.3.0'
+export const ALGORITHM_VERSION = 'v6.0.0'
+
+// ── v6.0 terminal-state caps ──
+// An additive composite lets 14 healthy signals outvote one catastrophic
+// state. v6.0 treats registered insolvency as a CAP, not a vote: active
+// bankruptcy (incl. intentional) caps the overall at 2.9; restructuring at
+// 4.9. Applied after coverage shrinkage, reported via `capApplied`.
+export const BANKRUPTCY_CAP = 2.9
+export const RESTRUCTURING_CAP = 4.9
+
+// ── v6.0 verdict floor ──
+// Below this many computable signals no verdict band should be presented -
+// consumers render "insufficient data", not a color-coded judgment.
+export const MIN_SIGNALS_FOR_VERDICT = 5
+
+// ── v5.3 input guards (v6.0: applied INSIDE computeReputation) ──
+// Never let NaN / Infinity / impossible values reach the signals. Coerce
+// first: numeric fields may arrive as strings from DB drivers.
+const PLAUSIBLE_MIN_YEAR = 1990
+function finiteOrNull(v: unknown): number | null {
+  if (v == null) return null
+  const n = typeof v === 'number' ? v : Number(v)
+  return Number.isFinite(n) ? n : null
+}
+function nonNegOrNull(v: unknown): number | null {
+  const n = finiteOrNull(v)
+  return n != null && n >= 0 ? n : null
+}
+
+/** Sanitize yearly rows: drop implausible years, null NaN/Infinity/negative
+ *  values. Exported so callers can inspect what the scorer will actually use. */
+export function sanitizeCompanyData(data: CompanySignalData): CompanySignalData {
+  const guardYear = new Date().getFullYear()
+  return {
+    ...data,
+    yearlyRows: (data.yearlyRows ?? [])
+      .filter(r => Number.isFinite(r.year) && r.year >= PLAUSIBLE_MIN_YEAR && r.year <= guardYear + 1)
+      .map(r => ({
+        year: r.year,
+        revenue: nonNegOrNull(r.revenue),
+        profit: finiteOrNull(r.profit),
+        netProfit: finiteOrNull(r.netProfit),
+        employees: nonNegOrNull(r.employees),
+        salary: nonNegOrNull(r.salary),
+        sodraDebt: nonNegOrNull(r.sodraDebt),
+      })),
+  }
+}
 
 // ── v5.3 coverage shrinkage (survivorship-bias correction) ──
 // A company with few computable signals has its weights re-normalized across
@@ -63,7 +110,10 @@ const COVERAGE_PRIOR_WEIGHT_PER_MISSING = 0.5  // each missing signal = half a n
  * console.log(score.ebrsAxes)   // 5-axis breakdown
  * ```
  */
-export function computeReputation(data: CompanySignalData): ReputationScore | null {
+export function computeReputation(rawData: CompanySignalData): ReputationScore | null {
+  // v6.0: guards run inside the entry point, so direct callers are protected
+  // too (previously the guards lived only in the production DB layer).
+  const data = sanitizeCompanyData(rawData)
   const activeSignals: StoredSignalScore[] = []
 
   for (const signal of SIGNAL_REGISTRY) {
@@ -98,8 +148,20 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
   // priorWeight 0 → unchanged.
   const missingSignals = SIGNAL_REGISTRY.length - activeSignals.length
   const priorWeight = missingSignals * COVERAGE_PRIOR_WEIGHT_PER_MISSING
-  const shrunkOverall = (overall * activeSignals.length + COVERAGE_PRIOR * priorWeight)
+  let shrunkOverall = (overall * activeSignals.length + COVERAGE_PRIOR * priorWeight)
     / (activeSignals.length + priorWeight)
+
+  // v6.0 terminal-state cap - registered insolvency bounds the overall no
+  // matter how strong the historical signals are. Never silent: capApplied.
+  let capApplied: 'bankruptcy' | 'restructuring' | null = null
+  const insolvencyStatus = data.bankruptcyData?.status
+  if (insolvencyStatus === 'bankrupt' || insolvencyStatus === 'intentional_bankruptcy') {
+    shrunkOverall = Math.min(shrunkOverall, BANKRUPTCY_CAP)
+    capApplied = 'bankruptcy'
+  } else if (insolvencyStatus === 'restructuring') {
+    shrunkOverall = Math.min(shrunkOverall, RESTRUCTURING_CAP)
+    capApplied = 'restructuring'
+  }
 
   // Confidence = weighted avg of signal confidences x signal coverage
   const signalCoverage = activeSignals.length / SIGNAL_REGISTRY.length
@@ -165,5 +227,7 @@ export function computeReputation(data: CompanySignalData): ReputationScore | nu
     margin,
     consecutiveProfitYears,
     signalCoverage: signalCoverageRatio,
+    scoreState: activeSignals.length < MIN_SIGNALS_FOR_VERDICT ? 'insufficient_data' : 'ok',
+    capApplied,
   }
 }

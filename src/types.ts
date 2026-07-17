@@ -143,6 +143,13 @@ export interface CompanySignalData {
   reportingData: ReportingData | null
   governanceData: GovernanceData | null
   ownershipData: OwnershipData | null
+  /** v6.0: registered insolvency state (AVNT register). Drives the
+   *  terminal-state cap in the scorer - see BANKRUPTCY_CAP. Optional so
+   *  v5.x callers keep compiling; absent = treated as none. */
+  bankruptcyData?: {
+    status: 'bankrupt' | 'restructuring' | 'intentional_bankruptcy' | 'none'
+    statusDate?: string | Date | null
+  } | null
 }
 
 // ── Stored Score ──
@@ -181,4 +188,10 @@ export interface ReputationScore {
   marketPosition: string
   margin: number | null
   consecutiveProfitYears: number
+  // ── v6.0 verdict metadata ──
+  /** 'insufficient_data' when fewer than MIN_SIGNALS_FOR_VERDICT signals
+   *  were computable - present no verdict band, only the numeric value. */
+  scoreState: 'ok' | 'insufficient_data'
+  /** Terminal-state cap applied to the overall (never silent). */
+  capApplied: 'bankruptcy' | 'restructuring' | null
 }

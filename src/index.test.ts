@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computeReputation, SIGNAL_REGISTRY, ALGORITHM_VERSION } from './index.js'
+import { computeReputation, SIGNAL_REGISTRY, ALGORITHM_VERSION, BANKRUPTCY_CAP, RESTRUCTURING_CAP, MIN_SIGNALS_FOR_VERDICT } from './index.js'
 import type { CompanySignalData } from './types.js'
 
 function makeCompany(overrides: Partial<CompanySignalData> = {}): CompanySignalData {
@@ -128,5 +128,64 @@ describe('EBRS Scoring', () => {
       ratingAverage: 8.5, ratingCount: 12, // adds community_trust signal
     }))!
     expect(richer.signals.length).toBeGreaterThanOrEqual(sparse.signals.length)
+  })
+})
+
+// ── v6.0 guarantees ──
+
+describe('EBRS v6.0', () => {
+  const base = {
+    companyId: 1, companyName: 'Test UAB', mentions: [], ratingAverage: null,
+    ratingCount: 0, topYearsListed: 0, foundedYear: 2015,
+    activationStatus: 'nominated', procurementData: null, taxData: null,
+    legalData: null, reportingData: null, governanceData: null, ownershipData: null,
+  } as never as Parameters<typeof computeReputation>[0]
+
+  const healthyYears = [
+    { year: 2022, revenue: 9000000, profit: 900000, netProfit: 800000, employees: 100, salary: 2500, sodraDebt: 0 },
+    { year: 2023, revenue: 9500000, profit: 950000, netProfit: 850000, employees: 105, salary: 2600, sodraDebt: 0 },
+    { year: 2024, revenue: 9800000, profit: 990000, netProfit: 900000, employees: 110, salary: 2700, sodraDebt: 0 },
+  ]
+
+  it('input guards run inside computeReputation - Infinity/NaN/implausible years never produce NaN', () => {
+    const score = computeReputation({ ...base, yearlyRows: [
+      { year: 2023, revenue: 5000000, profit: Infinity, netProfit: NaN, employees: 45, salary: 1800, sodraDebt: 0 },
+      { year: 3905, revenue: 1, profit: 1, netProfit: 1, employees: 1, salary: 1, sodraDebt: 0 },
+      { year: 2024, revenue: 6200000, profit: 550000, netProfit: 480000, employees: 52, salary: 2100, sodraDebt: 0 },
+    ] })
+    expect(score).not.toBeNull()
+    expect(Number.isNaN(score!.overall)).toBe(false)
+  })
+
+  it('active bankruptcy caps the overall at BANKRUPTCY_CAP no matter how healthy other signals are', () => {
+    const score = computeReputation({ ...base, yearlyRows: healthyYears,
+      ratingAverage: 8, ratingCount: 10,
+      bankruptcyData: { status: 'bankrupt' } })
+    expect(score!.overall).toBeLessThanOrEqual(BANKRUPTCY_CAP)
+    expect(score!.capApplied).toBe('bankruptcy')
+  })
+
+  it('restructuring caps the overall at RESTRUCTURING_CAP', () => {
+    const score = computeReputation({ ...base, yearlyRows: healthyYears,
+      bankruptcyData: { status: 'restructuring' } })
+    expect(score!.overall).toBeLessThanOrEqual(RESTRUCTURING_CAP)
+    expect(score!.capApplied).toBe('restructuring')
+  })
+
+  it('below MIN_SIGNALS_FOR_VERDICT signals the scoreState is insufficient_data', () => {
+    const score = computeReputation({ ...base, yearlyRows: [
+      { year: 2024, revenue: 500000, profit: 40000, netProfit: 35000, employees: null, salary: null, sodraDebt: null },
+    ] })
+    expect(score).not.toBeNull()
+    if (score!.signals.length < MIN_SIGNALS_FOR_VERDICT) {
+      expect(score!.scoreState).toBe('insufficient_data')
+    } else {
+      expect(score!.scoreState).toBe('ok')
+    }
+  })
+
+  it('signal weights sum to exactly 1.00', () => {
+    const sum = SIGNAL_REGISTRY.reduce((s, sig) => s + sig.defaultWeight, 0)
+    expect(Math.round(sum * 100) / 100).toBe(1.0)
   })
 })

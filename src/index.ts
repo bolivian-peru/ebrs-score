@@ -41,7 +41,14 @@
  * @packageDocumentation
  */
 
-export { computeReputation, ALGORITHM_VERSION } from './scorer.js'
+export {
+  computeReputation,
+  sanitizeCompanyData,
+  ALGORITHM_VERSION,
+  BANKRUPTCY_CAP,
+  RESTRUCTURING_CAP,
+  MIN_SIGNALS_FOR_VERDICT,
+} from './scorer.js'
 export { SIGNAL_REGISTRY } from './signals.js'
 export { EBRS_AXES } from './types.js'
 

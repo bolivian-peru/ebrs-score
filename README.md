@@ -30,7 +30,7 @@ Tikslas — sukurti atvirą, skaidrų ir nepriklausomą verslo patikimumo vertin
 | **Versija** | 6.0.0 |
 | **Licencija** | MIT (laisvai naudoti, modifikuoti, platinti) |
 | **Priklausomybės** | 0 (tik TypeScript) |
-| **Testai** | 10 automatinių testų |
+| **Testai** | 15 automatinių testų (įsk. v6.0 garantijų testus) |
 | **Verifikacija** | Dar nebuvo nepriklausomai audituotas |
 | **Fondas** | Planuojamas (nepriklausoma verifikacijos ir valdymo institucija) |
 
